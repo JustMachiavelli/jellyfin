@@ -31,7 +31,7 @@ namespace Jellyfin.Server
     public static class Program
     {
         /// <summary>
-        /// The name of logging configuration file containing application defaults.
+        /// The name of logging configuration file containing application defaults.日志配置文件的默认名称.
         /// </summary>
         public const string LoggingConfigFileDefault = "logging.default.json";
 
@@ -52,6 +52,7 @@ namespace Jellyfin.Server
         /// <returns><see cref="Task" />.</returns>
         public static Task Main(string[] args)
         {
+            // 内部定义了一个嵌套的 ErrorParsingArguments 方法，该方法用于处理解析命令行参数时发生的错误。如果有错误发生，将设置环境退出码为1，表示发生了错误，然后返回一个已完成的任务。
             static Task ErrorParsingArguments(IEnumerable<Error> errors)
             {
                 Environment.ExitCode = 1;
@@ -59,24 +60,32 @@ namespace Jellyfin.Server
             }
 
             // Parse the command line arguments and either start the app or exit indicating error
+            // 这里使用了 Parser.Default.ParseArguments 方法来解析命令行参数，期望的参数类型是 StartupOptions
+            // MapResult 方法根据解析结果执行相应的操作。如果解析成功，则调用 StartApp 方法；如果解析失败，则调用上面定义的 ErrorParsingArguments 方法
             return Parser.Default.ParseArguments<StartupOptions>(args)
                 .MapResult(StartApp, ErrorParsingArguments);
         }
 
         private static async Task StartApp(StartupOptions options)
         {
+            // 记录了启动应用程序时的时间戳
             _startTimestamp = Stopwatch.GetTimestamp();
+            // 创建应用程序的路径信息。这些路径可能包括日志目录、Web内容路径等。
             ServerApplicationPaths appPaths = StartupHelpers.CreateApplicationPaths(options);
 
+            // 指定日志文件的目录路径
             // $JELLYFIN_LOG_DIR needs to be set for the logger configuration manager
             Environment.SetEnvironmentVariable("JELLYFIN_LOG_DIR", appPaths.LogDirectoryPath);
 
+            // 设置了一些与硬件兼容性和特定硬件设置相关的环境变量
             // Enable cl-va P010 interop for tonemapping on Intel VAAPI
             Environment.SetEnvironmentVariable("NEOReadDebugKeys", "1");
             Environment.SetEnvironmentVariable("EnableExtendedVaFormats", "1");
 
+            // 初始化了日志配置文件，如果不存在则复制一个嵌入资源
             await StartupHelpers.InitLoggingConfigFile(appPaths).ConfigureAwait(false);
 
+            // 创建了一个应用程序配置实例，用于应用程序的启动
             // Create an instance of the application configuration to use for application startup
             IConfiguration startupConfig = CreateAppConfiguration(options, appPaths);
 

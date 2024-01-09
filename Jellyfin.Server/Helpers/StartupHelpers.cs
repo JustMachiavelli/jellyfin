@@ -231,10 +231,13 @@ public static class StartupHelpers
         // Get a stream of the resource contents
         // NOTE: The .csproj name is used instead of the assembly name in the resource path
         const string ResourcePath = "Jellyfin.Server.Resources.Configuration.logging.json";
+        // 使用反射获取当前程序集的嵌入资源流，如果资源不存在则抛出异常。
         Stream resource = typeof(Program).Assembly.GetManifestResourceStream(ResourcePath)
                           ?? throw new InvalidOperationException($"Invalid resource path: '{ResourcePath}'");
+        // 使用异步方式处理资源流，在处理完成后自动关闭资源流。这里确保资源流的正确处理，即使在发生异常时也能正确关闭
         await using (resource.ConfigureAwait(false))
         {
+            // 打开目标文件流，然后将嵌入资源的内容复制到文件中，实现了写文件的操作
             Stream dst = new FileStream(configPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, IODefaults.FileStreamBufferSize, FileOptions.Asynchronous);
             await using (dst.ConfigureAwait(false))
             {
@@ -254,6 +257,9 @@ public static class StartupHelpers
         try
         {
             // Serilog.Log is used by SerilogLoggerFactory when no logger is specified
+            // ReadFrom.Configuration(configuration) 从提供的配置中读取日志记录器的设置。这样，日志的配置信息可以从外部配置文件或其他源中加载
+            // Enrich.FromLogContext()使用 Serilog 的上下文信息来丰富日志。这通常包括一些环境信息，例如应用程序的上下文、调用链信息等
+            // Enrich.WithThreadId()启用线程 ID 的丰富，以便在日志中跟踪每个日志事件所在的线程
             Log.Logger = new LoggerConfiguration()
                 .ReadFrom.Configuration(configuration)
                 .Enrich.FromLogContext()
